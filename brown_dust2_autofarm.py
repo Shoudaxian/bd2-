@@ -287,7 +287,13 @@ class App:
                 self.log(f"取消录制：{key}")
                 return
             out = os.path.join(TEMPLATE_DIR, filename)
-            cv2.imwrite(out, frame[y:y+h, x:x+w])
+            # Use imencode + tofile for reliable Unicode paths on Windows.
+            ok, encoded = cv2.imencode(".png", frame[y:y+h, x:x+w])
+            if not ok:
+                raise RuntimeError("OpenCV 无法编码模板图片。")
+            encoded.tofile(out)
+            if not os.path.isfile(out) or os.path.getsize(out) == 0:
+                raise RuntimeError("模板文件没有成功写入，请检查 templates 文件夹权限和磁盘空间。")
             self.log(f"已保存模板：{filename}")
             self.refresh()
         except Exception as e:
