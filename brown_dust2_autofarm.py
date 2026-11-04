@@ -78,9 +78,15 @@ class Vision:
         path = os.path.join(TEMPLATE_DIR, filename)
         if not os.path.isfile(path):
             raise FileNotFoundError(f"缺少模板：{filename}")
-        templ = cv2.imread(path, cv2.IMREAD_COLOR)
+        # cv2.imread may fail on Windows paths containing Chinese characters.
+        # np.fromfile + cv2.imdecode handles Unicode paths reliably.
+        try:
+            raw = np.fromfile(path, dtype=np.uint8)
+            templ = cv2.imdecode(raw, cv2.IMREAD_COLOR) if raw.size else None
+        except Exception:
+            templ = None
         if templ is None:
-            raise RuntimeError(f"模板无法读取：{filename}")
+            raise RuntimeError(f"模板无法读取：{filename}。请确认文件存在、不是空文件且为有效 PNG 图片。路径：{path}")
         scr = self.screen()
         h, w = templ.shape[:2]
         sh, sw = scr.shape[:2]
